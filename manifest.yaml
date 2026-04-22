@@ -1,0 +1,30 @@
+version: 0.0.1
+type: plugin
+author: zhuxiangyi
+name: claude-proxy
+label:
+  en_US: Claude Proxy
+  zh_Hans: Claude 代理
+description:
+  en_US: Anthropic Claude models via custom proxy URL (OpenAI-compatible)
+  zh_Hans: 通过自定义代理 URL 使用 Claude 模型（兼容 OpenAI API）
+icon: icon.svg
+created_at: "2024-01-01T00:00:00.000000Z"
+resource:
+  memory: 1048576
+  permission:
+    model:
+      enabled: true
+      llm: true
+plugins:
+  models:
+    - "provider/claude_proxy.yaml"
+meta:
+  version: 0.0.1
+  arch:
+    - "amd64"
+    - "arm64"
+  runner:
+    language: "python"
+    version: "3.12"
+    entrypoint: "main"

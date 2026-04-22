@@ -1,0 +1,63 @@
+name: Publish Plugin to Dify Marketplace
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin repo
+        uses: actions/checkout@v4
+
+      - name: Download dify-plugin CLI
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/langgenius/dify-plugin-daemon/releases/latest | jq -r '.tag_name')
+          curl -L -o dify-plugin \
+            "https://github.com/langgenius/dify-plugin-daemon/releases/download/${LATEST}/dify-plugin-linux-amd64"
+          chmod +x dify-plugin
+
+      - name: Read manifest
+        id: manifest
+        run: |
+          echo "name=$(python3 -c "import yaml; m=yaml.safe_load(open('manifest.yaml')); print(m['name'])")" >> $GITHUB_OUTPUT
+          echo "version=$(python3 -c "import yaml; m=yaml.safe_load(open('manifest.yaml')); print(m['version'])")" >> $GITHUB_OUTPUT
+          echo "author=$(python3 -c "import yaml; m=yaml.safe_load(open('manifest.yaml')); print(m['author'])")" >> $GITHUB_OUTPUT
+
+      - name: Package plugin
+        run: |
+          ./dify-plugin plugin package . -o "${{ steps.manifest.outputs.name }}-${{ steps.manifest.outputs.version }}.difypkg"
+
+      - name: Checkout dify-plugins fork
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.manifest.outputs.author }}/dify-plugins
+          token: ${{ secrets.PLUGIN_ACTION }}
+          path: dify-plugins
+
+      - name: Create branch and copy package
+        run: |
+          cd dify-plugins
+          BRANCH="bump-${{ steps.manifest.outputs.name }}-plugin-${{ steps.manifest.outputs.version }}"
+          git checkout -b "$BRANCH"
+          mkdir -p "${{ steps.manifest.outputs.author }}/${{ steps.manifest.outputs.name }}"
+          cp "../${{ steps.manifest.outputs.name }}-${{ steps.manifest.outputs.version }}.difypkg" \
+            "${{ steps.manifest.outputs.author }}/${{ steps.manifest.outputs.name }}/"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "bump ${{ steps.manifest.outputs.name }} plugin to version ${{ steps.manifest.outputs.version }}"
+          git push origin "$BRANCH"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.PLUGIN_ACTION }}
+        run: |
+          gh pr create \
+            --repo langgenius/dify-plugins \
+            --head "${{ steps.manifest.outputs.author }}:bump-${{ steps.manifest.outputs.name }}-plugin-${{ steps.manifest.outputs.version }}" \
+            --base main \
+            --title "bump ${{ steps.manifest.outputs.name }} plugin to version ${{ steps.manifest.outputs.version }}" \
+            --body "Updated package file: \`${{ steps.manifest.outputs.name }}-${{ steps.manifest.outputs.version }}.difypkg\`"
