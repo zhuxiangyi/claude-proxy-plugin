@@ -41,7 +41,7 @@ jobs:
         run: |
           cd dify-plugins
           BRANCH="bump-${{ steps.manifest.outputs.name }}-plugin-${{ steps.manifest.outputs.version }}"
-          git checkout -b "$BRANCH"
+          git checkout -B "$BRANCH"
           mkdir -p "${{ steps.manifest.outputs.author }}/${{ steps.manifest.outputs.name }}"
           cp "../${{ steps.manifest.outputs.name }}-${{ steps.manifest.outputs.version }}.difypkg" \
             "${{ steps.manifest.outputs.author }}/${{ steps.manifest.outputs.name }}/"
@@ -49,7 +49,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "bump ${{ steps.manifest.outputs.name }} plugin to version ${{ steps.manifest.outputs.version }}"
-          git push origin "$BRANCH"
+          git push origin "$BRANCH" --force
 
       - name: Create Pull Request
         env:
@@ -60,4 +60,5 @@ jobs:
             --head "${{ steps.manifest.outputs.author }}:bump-${{ steps.manifest.outputs.name }}-plugin-${{ steps.manifest.outputs.version }}" \
             --base main \
             --title "bump ${{ steps.manifest.outputs.name }} plugin to version ${{ steps.manifest.outputs.version }}" \
-            --body "Updated package file: \`${{ steps.manifest.outputs.name }}-${{ steps.manifest.outputs.version }}.difypkg\`"
+            --body "Updated package file: \`${{ steps.manifest.outputs.name }}-${{ steps.manifest.outputs.version }}.difypkg\`" \
+          || echo "PR already exists, skipping"
